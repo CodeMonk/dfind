@@ -8,6 +8,9 @@ import (
 )
 
 func dumpFile(path string, f os.FileInfo) {
+    if f.IsDir() == true {
+        return
+    }
     fmt.Printf("+-----------------------------------------------------------------------+\n")
     fmt.Printf("| %-69s |\n", path)
     fmt.Printf("+-----------------------------------------------------------------------+\n")
@@ -22,6 +25,9 @@ func dumpFile(path string, f os.FileInfo) {
 }
 
 func visit(path string, f os.FileInfo, err error) error {
+    if f == nil {
+        return nil
+    }
     dumpFile(path, f)
     //fmt.Printf("Visited: %s\n", path)
     return nil

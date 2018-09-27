@@ -3,54 +3,49 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
 
 	"github.com/CodeMonk/dfind/cmd/dfinder/scanner"
+	"github.com/CodeMonk/dfind/db"
 )
 
-func dumpFile(path string, f os.FileInfo, verbose bool) {
-	if f.IsDir() == true {
-		return
-	}
-	if verbose {
-		fmt.Printf("+-----------------------------------------------------------------------+\n")
-		fmt.Printf("| %-69s |\n", path)
-		fmt.Printf("+-----------------------------------------------------------------------+\n")
-		fmt.Printf("| %-15s | %51s |\n", "Name", f.Name())
-		fmt.Printf("| %-15s | %51v |\n", "Size", f.Size())
-		fmt.Printf("| %-15s | %51v |\n", "Mode", f.Mode())
-		fmt.Printf("| %-15s | %51v |\n", "ModTime", f.ModTime())
-		fmt.Printf("| %-15s | %51v |\n", "IsDir", f.IsDir())
-		//    fmt.Printf("| %-15s | %51v |\n","Sys", f.Sys())
-		//    fmt.Printf("%+v\n",f)
-		fmt.Printf("+-----------------------------------------------------------------------+\n")
-	} else {
-		fmt.Println(path)
-	}
-}
+var (
+	// Verbose holds our verbose output file
+	Verbose = false
+	// DataDir is the location of our database files
+	DataDir = "/tmp"
+	// Root to search from
+	Root = "/"
+)
 
-func visit(path string, f os.FileInfo, err error) error {
-	if f == nil {
-		return nil
-	}
-	dumpFile(path, f, false)
-	//fmt.Printf("Visited: %s\n", path)
-	return nil
+func init() {
+	flag.BoolVar(&Verbose, "verbose", Verbose, "Turns on verbose output")
+	flag.StringVar(&Root, "root", Root, "Root directory to scan from ")
+	flag.StringVar(&DataDir, "data_dir", DataDir, "Where to store databases")
 }
 
 func main() {
 
 	// Get our root directory (this needs a lot of work)
 	flag.Parse()
-	root := flag.Arg(0)
 
-	fmt.Printf("root: %s\n", root)
+	if Verbose {
+		fmt.Println("Arguments:")
+		fmt.Printf("    Verbose: %v", Verbose)
+		fmt.Printf("       Root: %v", Root)
+	}
 
-	s, err := scanner.New(root)
+	db, err := db.New(false, DataDir)
 	if err != nil {
 		panic(err)
 	}
 
-	s.Dump(false)
+	s, err := scanner.New(Root, db)
+	if err != nil {
+		panic(err)
+	}
 
+	err = s.ScanInsert()
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
 }

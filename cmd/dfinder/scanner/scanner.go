@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/CodeMonk/dfind/db"
+	"github.com/CodeMonk/dfind/db/drivers"
 )
 
 // FileType holds our file type
@@ -33,6 +36,7 @@ type FileFeed chan *ScannedObject
 // Scanner holds a scanner's state, etc
 type Scanner struct {
 	RootPath string
+	db       *db.DB
 
 	FollowSymlinks bool // If true, will follow symlinks
 	OneFilesystem  bool // If true, will not jump filesystems
@@ -50,9 +54,10 @@ type ScannedObject struct {
 }
 
 // New allocates a new Scanner that can be used to populate the filesystem
-func New(root string) (*Scanner, error) {
+func New(root string, db *db.DB) (*Scanner, error) {
 	s := &Scanner{
 		RootPath: root,
+		db:       db,
 	}
 
 	// TODO: Make sure root path exists, and return error if not
@@ -71,6 +76,31 @@ func (s *Scanner) Scan() (FileFeed, error) {
 
 	// And, return our chan
 	return s.fileChan, nil
+}
+
+// ScanInsert will kick off a scan, and insert all records into the database
+func (s *Scanner) ScanInsert() error {
+	ch, err := s.Scan()
+	if err != nil {
+		return err
+	}
+
+	// process our channel
+	for {
+		so, ok := <-ch
+		if !ok {
+			return nil
+		}
+		// do the insert now
+		obj := &drivers.DBObj{
+			Key: so.Path,
+			Obj: so,
+		}
+		err = s.db.Insert(so.Path, obj, true) // force insert it
+		if err != nil {
+			fmt.Printf("Error inserting %v:\n     %v\n", so.Path, err)
+		}
+	}
 }
 
 // Dump will dump out the scanned items, demonstrating usage of the scanner

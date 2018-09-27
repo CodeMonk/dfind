@@ -8,9 +8,12 @@ type DBObj struct {
 	Obj interface{}
 }
 
+// SearchFeed is our channel to receive search results on
+type SearchFeed chan *DBObj
+
 // DBDriver defines our database interface, so that different drivers can be swapped out, as needed.
 type DBDriver interface {
-	Search(string, bool, bool) ([]*DBObj, error)
+	Search(string, bool, bool) (SearchFeed, error)
 	Insert(string, *DBObj, bool) error
 	Delete(string) error
 }

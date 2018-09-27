@@ -46,8 +46,56 @@ func NewSqlite(dataDir string) (*SQ3Driver, error) {
 }
 
 // Search is our search function for sqlite3
-func (sq *SQ3Driver) Search(pattern string, ignoreCase, seaarchContent bool) ([]*DBObj, error) {
-	return nil, nil
+func (sq *SQ3Driver) Search(pattern string, ignoreCase, searchContent bool) (SearchFeed, error) {
+	// Make our channel
+	ch := make(SearchFeed, 1000) // Buffered channel with 1000 slots, so we can burst
+
+	// Kick off our scanner
+	go sq.realSearch(pattern, ignoreCase, searchContent, ch)
+
+	// And, return our chan
+	return ch, nil
+}
+
+// realSearch will run our query, and emit DBObj's one at a time.
+func (sq *SQ3Driver) realSearch(pattern string, ignoreCase, searchContent bool, ch SearchFeed) {
+	column := "key"
+	if ignoreCase {
+		column = "lc_key"
+		pattern = strings.ToLower(pattern)
+	}
+	pattern = "%" + pattern + "%"
+
+	sql := fmt.Sprintf("SELECT key FROM %v WHERE %v LIKE ?", dbTable, column)
+	fmt.Printf("DEBUG: Search sql: %v\n", sql)
+	rows, err := sq.DB.Query(sql, pattern)
+	if err != nil {
+		fmt.Printf("Error starting query: %v\n", err)
+		return
+	}
+	defer rows.Close()
+
+	errorStrings := ""
+
+	for rows.Next() {
+		var key string
+		err = rows.Scan(&key)
+		if err != nil {
+			errorStrings = errorStrings + fmt.Sprintf("Error: %v\n", err)
+		} else {
+			// emit this result
+			ch <- &DBObj{Key: key}
+		}
+	}
+
+	if len(errorStrings) > 0 {
+		err = fmt.Errorf("Errors found:\n%v", errorStrings)
+	}
+	// Return that error as a key for now
+	ch <- &DBObj{Key: errorStrings}
+
+	// Finally close our channel to notify any consumers we're done.
+	close(ch)
 }
 
 // Insert adds a new record to the DB, it will return an error if the object already

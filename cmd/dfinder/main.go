@@ -30,8 +30,9 @@ func main() {
 
 	if Verbose {
 		fmt.Println("Arguments:")
-		fmt.Printf("    Verbose: %v", Verbose)
-		fmt.Printf("       Root: %v", Root)
+		fmt.Printf("    Verbose: %v\n", Verbose)
+		fmt.Printf("       Root: %v\n", Root)
+		fmt.Printf("    DataDir: %v\n", DataDir)
 	}
 
 	db, err := db.New(false, DataDir)

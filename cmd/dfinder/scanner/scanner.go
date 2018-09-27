@@ -69,7 +69,7 @@ func New(root string, db *db.DB) (*Scanner, error) {
 func (s *Scanner) Scan() (FileFeed, error) {
 
 	// Make our channel
-	s.fileChan = make(chan *ScannedObject, 1000) // Buffered channel with 1000 slots, so we can burst
+	s.fileChan = make(FileFeed, 1000) // Buffered channel with 1000 slots, so we can burst
 
 	// Kick off our scanner
 	go s.realScan()
